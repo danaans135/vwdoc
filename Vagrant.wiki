@@ -1,0 +1,34 @@
+%title Vagrant+CentOS7のインストール
+
+== Vagrant + CentOS7のインストール手順 ==
+
+<div class="text-right">2015/05/08</div>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+Vagrant + CentOS7のインストール手順。
+  </div>
+</div>
+
+Vagrant + CentOS7のインストール手順は以下の通り。
+
+ # プロジェクトのフォルダを作成し移動
+   {{{
+> mkdir vm\centos7_test && cd vm\centos7_test
+   }}}
+ # VM初期化
+   {{{
+> vagrant init hfm4/centos7
+   }}}
+   * [[https://vagrantcloud.com/|Vagrant Cloud]]にアップされている[[https://atlas.hashicorp.com/hfm4/boxes/centos7|hfm4/centos7]]を使い初期化。
+ # Vagrantfile編集
+   # ポートフォワードの設定 (80 => 8080)
+     {{{
+config.vm.network "forwarded_port", guest: 80, host: 8080
+     }}}
+ # VM起動
+   {{{
+> vagrant up
+   }}}
+
+以上です。

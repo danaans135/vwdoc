@@ -1,0 +1,51 @@
+%title CentOS setting
+
+== CentOSの設定 ==
+
+<div class="text-right">2015/05/11</div>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+CentOS7のインストール後の設定。
+  </div>
+</div>
+
+=== SELinuxの無効化 ===
+
+{{{
+# setenforce 0
+# sed -i 's/^SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+}}}
+
+
+
+=== ユーザーの追加 ===
+
+ * `useradd`でユーザー追加。
+{{{
+# useradd user01
+}}}
+
+ * `passwd`でパスワード設定。
+{{{
+# passwd user01
+}}}
+
+ * sudo権限を与える場合は、 `visudo`で/etc/sudoersに追加。
+{{{
+# visudo
+}}}
+   /etc/sudoers
+{{{
+## The COMMANDS section may have other options added to it.
+##
+## Allow root to run any commands anywhere
+root    ALL=(ALL)       ALL
+vagrant ALL=(ALL)       NOPASSWD:       ALL
+user01  ALL=(ALL)       NOPASSWD:       ALL <-------- 追記
+}}}
+
+ * `userdel`でユーザー削除。
+{{{
+# userdel -r user01
+}}}

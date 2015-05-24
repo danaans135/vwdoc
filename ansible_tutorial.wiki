@@ -1,0 +1,203 @@
+%title Ansible
+
+=== Ansibleチュートリアルやってみた ===
+
+<div class="text-right">2015/05/12</div>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+Ansibleチュートリアルを参考に練習をやってみました。
+  </div>
+</div>
+
+環境は以下の通りです。
+
+* ホストOS：Windows 8.1 (※Cygwinを入れてます）
+* 仮想化環境：Vagrant 1.7.2 + VirtualBox
+* ゲストOS：CentOS7 ×2台
+
+凡例：>はDOSプロンプト、$と#はSSHの入力を示します。$はvagrantユーザー、#はrootユーザーです。
+
+=== 仮想マシン起動 ===
+
+Vagrantで2台の仮想マシンをたちあげます。
+Ansibleサーバーマシン(node1)とAnsibleに制御される側のマシン(node2)の2台です。
+
+# *Vagrant初期化 * CentOSの環境を作成します。
+{{{
+> vagrant init hfm4/centos7
+}}}
+# *Vagrantfile編集 * node1とnode2の2台をたてるように設定します。
+{{{
+Vagrant.configure(2) do |config|
+  config.vm.define :node1 do |node|
+    node.vm.box = "hfm4/centos7"
+    node.vm.network :forwarded_port, guest: 22, host: 2001, id: "ssh"
+    node.vm.network :private_network, ip: "192.168.33.11"
+  end
+
+  config.vm.define :node2 do |node|
+    node.vm.box = "hfm4/centos7"
+    node.vm.network :forwarded_port, guest: 22, host: 2002, id: "ssh"
+    node.vm.network :forwarded_port, guest: 80, host: 8000, id: "http"
+    node.vm.network :private_network, ip: "192.168.33.12"
+  end
+end
+}}}
+# *VM起動 *
+{{{
+> vagrant up
+}}}
+# *SSH設定 * node2用の秘密鍵をnode1へコピーし、パーミッションを600に設定します。
+{{{
+> vagrant ssh-config node1 > ssh_config
+> scp -F ssh_config .vagrant\machines\node2\virtualbox\private_key node1:.ssh/id_rsa
+> vagrant ssh node1
+$ chmod 600 .ssh/id_rsa
+}}}
+  これでnode1からnode2にSSH接続できるようになります。
+{{{
+$ ssh 192.168.33.12
+}}}
+
+=== Ansible導入 ===
+
+node1にAnsibleをインストールし、node2への疎通を確認します。
+
+# *Ansibleをインストール*
+  事前にEPELリポジトリをインストールします。
+{{{
+# yum -y install epel-release
+# yum -y install ansible
+}}}
+  バージョン表示。
+{{{
+$ ansible --version
+ansible 1.9.1
+  configured module search path = None
+}}}
+# *Ansibleの疎通を確認 *
+  # *インベントリファイル作成* Ansibleの実行には接続先を記載したファイルが必要で、これをインベントリファイルといいます。
+{{{
+$ echo 192.168.33.12 > hosts
+}}}
+  # *pingモジュール実行 * はじめにpingモジュールをnode2に対し実行してみます。
+{{{
+$ ansible 192.168.33.12 -i hosts -m ping
+192.168.33.12 | success >> {
+    "changed": false,
+    "ping": "pong"
+}
+}}}
+    `-m`でモジュールを指定しますが、pingの他にもあります。モジュールの一覧は以下で見れます。
+{{{
+$ ansible-doc -l
+}}}
+  # *任意のコマンド実行 * `-a`で任意のコマンドを実行できます。
+{{{
+$ ansible -i hosts 192.168.33.12 -a 'uname -r'
+192.168.33.12 | success | rc=0 >>
+3.10.0-123.6.3.el7.x86_64
+}}}
+
+=== Playbookを書いてみる ===
+
+Apacheサーバーを導入するPlaybookを書いて、node1で実行してみます。
+
+# *インベントリファイル作成* hostsを以下の内容で作成します。今度はグループを定義します。
+{{{
+[test-servers]
+192.168.33.12
+}}}
+# *playbookファイルを作成* simple-playbook.ymlを以下の内容で作成します。
+{{{
+---
+- hosts: test-servers
+  sudo: yes
+  tasks:
+    - name: Apacheインストール
+      yum: name=httpd state=installed
+
+    - name: httpサービス開始
+      service: name=httpd state=running enabled=yes
+
+    - name: httpサービスを外部に公開
+      firewalld: service=http permanent=true state=enabled immediate=true
+}}}
+# *実行前の確認 *
+  # *構文チェック* `--syntax-check`オプションを使います。
+{{{
+$ ansible-playbook -i hosts simple-playbook.yml --syntax-check
+
+playbook: simple-playbook.yml
+
+}}}
+  # *task一覧* `--list-tasks`オプションを使います。
+{{{
+$ ansible-playbook -i hosts simple-playbook.yml --list-tasks
+
+playbook: simple-playbook.yml
+
+  play #1 (test-servers):       TAGS: []
+    Apacheインストール  TAGS: []
+    httpサービス開始    TAGS: []
+    httpサービスを外部に公開    TAGS: []
+
+}}}
+  # *dry-run* `--check`オプションで実際に実行した場合こうなるという出力が見れます。
+{{{
+$ ansible-playbook -i hosts simple-playbook.yml --check
+
+PLAY [test-servers] ***********************************************************
+
+GATHERING FACTS ***************************************************************
+ok: [192.168.33.12]
+
+TASK: [Apacheインストール] **********************************************
+changed: [192.168.33.12]
+
+TASK: [httpサービス開始] ************************************************
+changed: [192.168.33.12]
+
+TASK: [httpサービスを外部に公開] ************************************
+changed: [192.168.33.12]
+
+PLAY RECAP ********************************************************************
+192.168.33.12              : ok=3    changed=2    unreachable=0    failed=0
+
+}}}
+# *実行 *
+{{{
+$ ansible-playbook -i hosts simple-playbook.yml
+
+PLAY [test-servers] ***********************************************************
+
+GATHERING FACTS ***************************************************************
+ok: [192.168.33.12]
+
+TASK: [Apacheインストール] **********************************************
+changed: [192.168.33.12]
+
+TASK: [httpサービス開始] ************************************************
+changed: [192.168.33.12]
+
+TASK: [httpサービスを外部に公開] ************************************
+changed: [192.168.33.12]
+
+PLAY RECAP ********************************************************************
+192.168.33.12              : ok=3    changed=2    unreachable=0    failed=0
+}}}
+# *確認 * node2にApacheが導入されたことを確認します。
+  # 192.168.33.12に接続。
+{{{
+$ ssh 192.168.33.12
+}}}
+  # httpdサービスの状況を表示し稼働していることを確認。
+{{{
+$ sudo systemctl status httpd.service
+}}}
+  # ファイアウォール設定を表示しhttpが公開されていることを確認。
+{{{
+$ sudo firewall-cmd --list-all
+}}}
+  # ブラウザから `http://192.168.33.12` あるいは `http://localhost:8000` にアクセスしApacheのデフォルトページが表示されることを確認。

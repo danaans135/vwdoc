@@ -1,0 +1,59 @@
+%title CentOS7にGitLabをインストール
+
+=== CentOS7にGitLabをインストール ===
+
+<div class="text-right">2015/05/24</div>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+CentOS7にGitLabをインストール。
+  </div>
+</div>
+
+[[https://about.gitlab.com/downloads/|GitLabのダウンロードページ]]へアクセスすると
+インストール手順が書かれてあるので、それに従えばOKです。
+
+----
+
+[[Vagrant|Vagrant+CentOS7のインストール手順 ]]を行った直後という想定で、GitLabのインストール手順を以下に示します。
+
+Vagrantfileは以下の通り。
+
+- Vagrantfile
+{{{
+Vagrant.configure(2) do |config|
+  config.vm.hostname="gitlab"
+  config.vm.box = "hfm4/centos7"
+  config.vm.network "forwarded_port", guest: 80, host: 8080
+  config.vm.network "private_network", ip: "192.168.33.10"
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+    vb.name = "gitlab"
+  end
+end
+}}}
+
+GitLabのインストール手順は以下の通りです。
+
+# 関連パッケージインストール
+{{{
+$ sudo yum install openssh-server
+$ sudo firewall-cmd --permanent --add-service=http
+$ sudo systemctl reload firewalld
+}}}
+# GitLabインストール
+{{{
+$ curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.rpm.sh | sudo bash
+$ sudo yum install gitlab-ce
+}}}
+# GitLab開始
+{{{
+$ sudo gitlab-ctl reconfigure
+}}}
+# ブラウザで確認
+  - URL: `http://192.168.33.10`
+  - ID: root
+  - PW: 5iveL!fe
+
+
+以上。

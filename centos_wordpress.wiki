@@ -1,0 +1,111 @@
+%title WordPress
+
+=== WordPressサーバー構築 ===
+
+<div class="text-right">2015/05/11</div>
+
+<div class="panel panel-default">
+  <div class="panel-body">
+WordPressサーバー構築手順を示します。
+  </div>
+</div>
+
+| 項目               | 値                 |
+|--------------------|--------------------|
+| DB名               | : wordpress        |
+| ルートパスワード   | : vagrant          |
+| ユーザー名         | : wordpress        |
+| ユーザーパスワード | : wordpress        |
+| サイトのタイトル   | : first my blog    |
+| メールアドレス     | : root@example.com |
+
+` `
+
+ # Apache + PHP
+   # パッケージのインストール
+{{{
+# yum -y install httpd php php-mysql php-gd php-mbstring
+}}}
+   # phpの設定ファイル /etc/php.ini を編集
+     {{{
+// 692行目
+default_charset = "UTF-8"
+
+// 878行目
+date.timezone = "Asia/Tokyo"
+     }}}
+   # Apache起動
+{{{
+# systemctl start httpd.service
+# systemctl enable httpd.service
+}}}
+   # httpサービスを外部に公開する
+{{{
+# firewall-cmd --add-service=http --permanent
+# firewall-cmd --reload
+}}}
+   サービスhttpを現在のゾーン（デフォルトはpublic）に追加します。
+   --permanentで再起動後も有効になります。
+     * ブラウザから `http://localhost:8080` にアクセスし確認。
+     * phpの設定がうまくいったかどうかは下記の内容で /var/www/html/info.php を作成し、
+       {{{
+<?php
+  phpinfo();
+?>
+       }}}
+       `http://localhost:8080/info.php` にアクセスし、php情報画面が表示されることを確認。
+ # MySQL
+   # インストール
+{{{
+# yum -y install http://dev.mysql.com/get/mysql-community-release-el7-5.noarch.rpm
+# yum -y install mysql-community-server
+}}}
+   # 起動
+{{{
+# systemctl start mysqld.service
+# systemctl enable mysqld.service
+}}}
+   # 設定
+{{{
+# mysql_secure_installation
+}}}
+     * いくつか質問されますがルートのパスワードだけ設定し、後の質問はデフォルトで良いと思います。
+   # DB作成
+     {{{
+# mysql -u'root' -p
+mysql> create database wordpress;
+mysql> grant all privileges on wordpress.* to wordpress@localhost identified by 'wordpress';
+mysql> flush privileges;
+mysql> quit
+     }}}
+ # WordPress
+   # ダウンロードと解凍
+     {{{
+# yum -y install wget
+# cd /var/www/html
+# wget https://ja.wordpress.org/latest-ja.tar.gz
+# tar xvzf latest-ja.tar.gz
+# mv wordpress/* ./
+# rmdir ./wordpress/
+# rm -f latest.tar.gz
+     }}}
+   # apacheユーザーに書込み権限を与える 
+     {{{
+# chown -R apache:apache /var/www/html
+     }}}
+   # ブラウザでインストール
+     # `http://localhost:8080` にアクセス 
+       - [[local:WordPress_01.png|{{local:WordPress_01.png|img01|style="width:600px; height: 400px;"}}]]
+     # DB接続設定を入力
+       - [[local:WordPress_02.png|{{local:WordPress_02.png|img02|style="width:600px; height: 400px;"}}]]
+     # DB接続設定完了画面
+       - [[local:WordPress_03.png|{{local:WordPress_03.png|img03|style="width:600px; height: 400px;"}}]]
+     # サイト情報を入力
+       - [[local:WordPress_04.png|{{local:WordPress_04.png|img04|style="width:600px; height: 500px;"}}]]
+     # DB接続設定完了画面
+       - [[local:WordPress_05.png|{{local:WordPress_05.png|img05|style="width:600px; height: 400px;"}}]]
+     # DB接続設定完了画面
+       - [[local:WordPress_06.png|{{local:WordPress_06.png|img06|style="width:600px; height: 400px;"}}]]
+     # DB接続設定完了画面
+       - [[local:WordPress_07.png|{{local:WordPress_07.png|img07|style="width:600px; height: 400px;"}}]]
+
