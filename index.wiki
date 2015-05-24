@@ -1,0 +1,15 @@
+%title Vim Hello
+
+<div class="panel panel-default">
+  <div class="panel-body text-center">
+竪穴式メモ
+  </div>
+</div>
+
+  * [[Vagrant]]
+  * [[CentOS_setting|CentOSの設定 ]]
+  * [[centos_wordpress|WordPressサーバーの構築 ]]
+  * [[ansible_tutorial|Ansibleチュートリアル]]
+  * [[CentOS7にGitLabをインストール]]
+ 
+
